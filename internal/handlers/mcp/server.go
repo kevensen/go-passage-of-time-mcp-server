@@ -6,14 +6,14 @@ import (
 )
 
 type Server struct {
-	mcp_go_server.MCPServer
+	*mcp_go_server.MCPServer
 	TimeManager TimeManager
+	ready       bool
 }
 
 func NewServer() *Server {
-
 	s := &Server{
-		MCPServer: *mcp_go_server.NewMCPServer(
+		MCPServer: mcp_go_server.NewMCPServer(
 			"example-servers/everything",
 			"1.0.0",
 			mcp_go_server.WithToolCapabilities(true),
@@ -55,4 +55,8 @@ func NewServer() *Server {
 		),
 		s.TimeDifference)
 	return s
+}
+
+func (s *Server) Ready() bool {
+	return s.ready
 }
