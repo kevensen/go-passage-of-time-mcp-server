@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/mark3labs/mcp-go/mcp"
+	mcp_go "github.com/mark3labs/mcp-go/mcp"
 )
 
 const dateFormat = "2006-01-02"
@@ -82,17 +82,7 @@ func (l *LiveTimeManager) LoadLocation(name string) (*time.Location, error) {
 	return loc, nil
 }
 
-type Server struct {
-	TimeManager TimeManager
-}
-
-func NewServer() *Server {
-	return &Server{
-		TimeManager: &LiveTimeManager{},
-	}
-}
-
-func (s *Server) CurrentDateTime(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *Server) CurrentDateTime(ctx context.Context, request mcp_go.CallToolRequest) (*mcp_go.CallToolResult, error) {
 	tz := request.GetString("timeZone", "UTC")
 
 	now := s.TimeManager.Now()
@@ -110,9 +100,9 @@ func (s *Server) CurrentDateTime(ctx context.Context, request mcp.CallToolReques
 	_, requestedZoneOffset := t.Zone()
 	slog.InfoContext(ctx, "CurrentDateTime", slog.String("server_local_tz", zoneName), slog.Int("server_local_offset_seconds", offsetSeconds), slog.String("requested_tz", tz), slog.Int("requested_tz_offset", requestedZoneOffset))
 
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			mcp.TextContent{
+	return &mcp_go.CallToolResult{
+		Content: []mcp_go.Content{
+			mcp_go.TextContent{
 				Type: "text",
 				Text: t.Format(dateTimeFormatTimeZone),
 			},
@@ -120,11 +110,11 @@ func (s *Server) CurrentDateTime(ctx context.Context, request mcp.CallToolReques
 	}, nil
 }
 
-func (s *Server) TimeSince(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *Server) TimeSince(ctx context.Context, request mcp_go.CallToolRequest) (*mcp_go.CallToolResult, error) {
 	tz := request.GetString("timeZone", "UTC")
 	input := request.GetString("dateTime", "")
 	if input == "" {
-		return mcp.NewToolResultError(NewNilInputTime().Error()), nil
+		return mcp_go.NewToolResultError(NewNilInputTime().Error()), nil
 	}
 
 	opts := &TimeOpts{
@@ -134,18 +124,32 @@ func (s *Server) TimeSince(ctx context.Context, request mcp.CallToolRequest) (*m
 
 	t, err := ParseTime(opts)
 	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
+		return mcp_go.NewToolResultError(err.Error()), nil
 	}
 	t = normalizeTimeToUTC(ctx, t)
 
 	now := s.TimeManager.Now()
 	now = normalizeTimeToUTC(ctx, now)
 
+	if t.After(now) {
+		return mcp_go.NewToolResultError("The specified time is in the future"), nil
+	}
+	if t.Equal(now) {
+		return &mcp_go.CallToolResult{
+			Content: []mcp_go.Content{
+				mcp_go.TextContent{
+					Type: "text",
+					Text: "The specified time is now.",
+				},
+			},
+		}, nil
+	}
+
 	duration := now.Sub(t)
 
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			mcp.TextContent{
+	return &mcp_go.CallToolResult{
+		Content: []mcp_go.Content{
+			mcp_go.TextContent{
 				Type: "text",
 				Text: duration.String(),
 			},
@@ -153,11 +157,11 @@ func (s *Server) TimeSince(ctx context.Context, request mcp.CallToolRequest) (*m
 	}, nil
 }
 
-func (s *Server) TimeUntil(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *Server) TimeUntil(ctx context.Context, request mcp_go.CallToolRequest) (*mcp_go.CallToolResult, error) {
 	tz := request.GetString("timeZone", "UTC")
 	input := request.GetString("dateTime", "")
 	if input == "" {
-		return mcp.NewToolResultError(NewNilInputTime().Error()), nil
+		return mcp_go.NewToolResultError(NewNilInputTime().Error()), nil
 	}
 
 	opts := &TimeOpts{
@@ -167,7 +171,7 @@ func (s *Server) TimeUntil(ctx context.Context, request mcp.CallToolRequest) (*m
 
 	t, err := ParseTime(opts)
 	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
+		return mcp_go.NewToolResultError(err.Error()), nil
 	}
 	t = normalizeTimeToUTC(ctx, t)
 
@@ -175,14 +179,14 @@ func (s *Server) TimeUntil(ctx context.Context, request mcp.CallToolRequest) (*m
 	now = normalizeTimeToUTC(ctx, now)
 
 	if t.Before(now) {
-		return mcp.NewToolResultError("The specified time is in the past"), nil
+		return mcp_go.NewToolResultError("The specified time is in the past"), nil
 	}
 
 	duration := t.Sub(now)
 
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			mcp.TextContent{
+	return &mcp_go.CallToolResult{
+		Content: []mcp_go.Content{
+			mcp_go.TextContent{
 				Type: "text",
 				Text: duration.String(),
 			},
@@ -190,13 +194,13 @@ func (s *Server) TimeUntil(ctx context.Context, request mcp.CallToolRequest) (*m
 	}, nil
 }
 
-func (s *Server) TimeDifference(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *Server) TimeDifference(ctx context.Context, request mcp_go.CallToolRequest) (*mcp_go.CallToolResult, error) {
 	firstTimeZone := request.GetString("firstTimeZone", "UTC")
 	firstDateTime := request.GetString("firstDateTime", "")
 	secondTimeZone := request.GetString("secondTimeZone", "UTC")
 	secondDateTime := request.GetString("secondDateTime", "")
 	if firstDateTime == "" || secondDateTime == "" {
-		return mcp.NewToolResultError("Both firstDateTime and secondDateTime must be provided"), nil
+		return mcp_go.NewToolResultError("Both firstDateTime and secondDateTime must be provided"), nil
 	}
 
 	firstOpts := &TimeOpts{
@@ -209,22 +213,22 @@ func (s *Server) TimeDifference(ctx context.Context, request mcp.CallToolRequest
 	}
 	firstTime, err := ParseTime(firstOpts)
 	if err != nil {
-		return mcp.NewToolResultErrorFromErr("error with first input time", err), nil
+		return mcp_go.NewToolResultErrorFromErr("error with first input time", err), nil
 	}
 	secondTime, err := ParseTime(secondOpts)
 	if err != nil {
-		return mcp.NewToolResultErrorFromErr("error with second input time", err), nil
+		return mcp_go.NewToolResultErrorFromErr("error with second input time", err), nil
 	}
 
 	firstTime = normalizeTimeToUTC(ctx, firstTime)
 	secondTime = normalizeTimeToUTC(ctx, secondTime)
 
-	var result *mcp.CallToolResult
+	var result *mcp_go.CallToolResult
 
 	if firstTime.Equal(secondTime) {
-		result = &mcp.CallToolResult{
-			Content: []mcp.Content{
-				mcp.TextContent{
+		result = &mcp_go.CallToolResult{
+			Content: []mcp_go.Content{
+				mcp_go.TextContent{
 					Type: "text",
 					Text: "The two times are equal.",
 				},
@@ -234,9 +238,9 @@ func (s *Server) TimeDifference(ctx context.Context, request mcp.CallToolRequest
 
 	if firstTime.Before(secondTime) {
 		duration := secondTime.Sub(firstTime)
-		result = &mcp.CallToolResult{
-			Content: []mcp.Content{
-				mcp.TextContent{
+		result = &mcp_go.CallToolResult{
+			Content: []mcp_go.Content{
+				mcp_go.TextContent{
 					Type: "text",
 					Text: "The first time is earlier than the second time by " + duration.String(),
 				},
@@ -245,9 +249,9 @@ func (s *Server) TimeDifference(ctx context.Context, request mcp.CallToolRequest
 	}
 	if firstTime.After(secondTime) {
 		duration := firstTime.Sub(secondTime)
-		result = &mcp.CallToolResult{
-			Content: []mcp.Content{
-				mcp.TextContent{
+		result = &mcp_go.CallToolResult{
+			Content: []mcp_go.Content{
+				mcp_go.TextContent{
 					Type: "text",
 					Text: "The first time is later than the second time by " + duration.String(),
 				},

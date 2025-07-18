@@ -307,6 +307,20 @@ func TestTimeDifference(t *testing.T) {
 			},
 			want: "The two times are equal.",
 		},
+		{
+			desc: "Valid request with two dates and times in different timezones with second earlier",
+			request: &mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Arguments: map[string]any{
+						"firstDateTime":  "2023-10-01 12:30:00",
+						"secondDateTime": "2023-10-01 01:30:00",
+						"secondTimeZone": "Pacific/Honolulu",
+					},
+				},
+			},
+			want:    "The first time is later than the second time by 1h0m0s",
+			wantErr: false,
+		},
 	}
 	ctx := context.Background()
 	for _, tc := range testCases {
