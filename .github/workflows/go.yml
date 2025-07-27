@@ -5,7 +5,7 @@ name: Go
 
 on:
   release:
-    types: [released]
+    types: [published]
 
 jobs:
   build:
@@ -36,11 +36,12 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          RELEASE_VERSION=${GITHUB_REF##*/}
-          go build -o go-potms-${{ matrix.goos }}-${{ matrix.goarch }}-${RELEASE_VERSION} ./go-potms/main.go # Adjust path to your main package
+          go build -o go-potms-${{ matrix.goos }}-${{ matrix.goarch }}-${{ github.event.release.tag_name }} ./go-potms/main.go # Adjust path to your main package
 
       - name: Upload artifact
+        env:
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
         uses: actions/upload-artifact@v4
         with:
-          name: go-potms-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: go-potms-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: go-potms-${{ matrix.goos }}-${{ matrix.goarch }}-${{ github.event.release.tag_name }}
+          path: go-potms-${{ matrix.goos }}-${{ matrix.goarch }}-${{ github.event.release.tag_name }}
