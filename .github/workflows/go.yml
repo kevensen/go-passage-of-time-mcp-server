@@ -4,30 +4,43 @@
 name: Go
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  release:
+    types: [published]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
-      strategy:
-        matrix:
-          go-version: [ '1.25.x' ]
-  
+    strategy:
+      matrix:
+        go-version: ["1.25.x"]
+        goos: [linux, windows, darwin] # Target operating systems
+        goarch: [amd64, arm64] # Target architectures
+        exclude: # Exclude combinations that are not supported or desired
+          - goos: windows
+            goarch: arm64
+          - goos: darwin
+            goarch: arm64 # if you don't have an M1/M2 runner
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ matrix.go-version }}
-    - name: Test
-      run: go test -v ./...
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Test
+        run: go test -v ./...
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          RELEASE_VERSION=${GITHUB_REF##*/}
+          go build -o go-potms-${{ matrix.goos }}-${{ matrix.goarch }}-${RELEASE_VERSION} ./go-potms/main.go # Adjust path to your main package
 
-    
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-potms-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: go-potms-${{ matrix.goos }}-${{ matrix.goarch }}
