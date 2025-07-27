@@ -16,3 +16,7 @@ By default, `go-potms` will run as an "stdio" MCP server.  To run as an Streamab
 ```bash
 go-potms -port 8080
 ```
+### Docker Image
+```
+docker run  kevensen/go-pot-mcp-server:latest
+```
