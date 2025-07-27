@@ -10,6 +10,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to upload release assets
+      actions: read # Required to read action metadata
     strategy:
       matrix:
         go-version: ["1.24"]
